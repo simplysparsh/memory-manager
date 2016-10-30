@@ -1,5 +1,5 @@
 # memory-management
-Implement memory management schemes and mimic malloc() and free() for a single thread system
+Implement memory management schemes to manage a chunk of memory for a single thread system 
 
 ## Description
 In this project, we will implement four memory allocation schemes to manage a chunk of memory and mimic malloc() and free() functions for a single thread system:
