@@ -4,7 +4,8 @@ out = test-out
 SOURCES = ./$(test)/TestInputs/test$(input).c my_memory.c
 INCLUDE = ./$(test)/TestInputs/
 CC = gcc
-LIBS = -lm -lrt
+LIBS = -lm
+#LIBS = -lm -lrt
 all: 	my_memory.c ./$(test)/TestInputs/memalloc.h 
 	$(CC) $(LIBS) -I$(INCLUDE) -w -o $(out) $(SOURCES)
 	./$(out)
