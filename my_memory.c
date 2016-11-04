@@ -64,10 +64,12 @@ void* my_malloc(int requested_size) {
                 if(requested_size == allocatable_hole -> size){
                     add_to_allocated_mem(allocated_node);
                     delete_from_holes_list(allocatable_hole);
+                    return allocated_node;
                 }
                 else {
                     update_the_hole(allocatable_hole, requested_size);
                     add_to_allocated_mem(allocated_node);
+                    return allocated_node;
                 }
             }
             
