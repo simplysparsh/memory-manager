@@ -26,6 +26,7 @@ int malloc_type = -1;
 int mem_size = 0;
 void* start_of_memory = NULL;
 void* end_of_memory = NULL; 
+int int_size = sizeof(int);
 
 // Function Declarations
 Node_t* create_new_node(void* start_addr, void* end_addr);
@@ -34,16 +35,17 @@ void add_to_allocated_mem(Node_t* node);
 int delete_from_holes_list(Node_t* node);
 void update_the_hole(Node_t* hole, int requested_size);
 
+
 //Lists to maintain memory usage
 Node_t* holes = NULL;
 Node_t* allocated_mem = NULL;
 
-void setup( int malloc_type, int mem_size, void* start_of_memory ) {
+void setup( int _malloc_type, int _mem_size, void* _start_of_memory ) {
 
-    malloc_type = malloc_type;
-    mem_size = mem_size;
-    start_of_memory = start_of_memory; 
-    end_of_memory = start_of_memory + mem_size;
+    malloc_type = _malloc_type;
+    mem_size = _mem_size;
+    start_of_memory = _start_of_memory; 
+    end_of_memory = _start_of_memory + mem_size;
 
     holes = create_new_node(start_of_memory, end_of_memory);
 }
@@ -55,21 +57,27 @@ void* my_malloc(int requested_size) {
     switch (malloc_type) {
         
         case FIRST_FIT:
-            allocatable_hole = get_allocatable_hole(requested_size);
+            allocatable_hole = get_allocatable_hole(requested_size + int_size);
 
             if(allocatable_hole != NULL) {
                 allocated_node = create_new_node(allocatable_hole->start_addr, 
-                                 allocatable_hole->start_addr+requested_size);
+                                 allocatable_hole->start_addr+requested_size+int_size);
 
-                if(requested_size == allocatable_hole -> size){
+                if((requested_size + int_size) == allocatable_hole -> size){
                     add_to_allocated_mem(allocated_node);
                     delete_from_holes_list(allocatable_hole);
-                    return allocated_node;
+
+                    //store the size in the first 4 bytes.
+                    *(int*)(allocated_node->start_addr) = allocated_node->size - int_size; 
+                    return (allocated_node->start_addr + int_size);
                 }
                 else {
-                    update_the_hole(allocatable_hole, requested_size);
+                    update_the_hole(allocatable_hole, requested_size+int_size);
                     add_to_allocated_mem(allocated_node);
-                    return allocated_node;
+
+                    //store the size in the first 4 bytes.
+                    *(int*)(allocated_node->start_addr) = allocated_node->size - int_size;
+                    return (allocated_node->start_addr + int_size);
                 }
             }
             
@@ -190,7 +198,7 @@ int delete_from_holes_list(Node_t* node) {
 }
 
 void update_the_hole(Node_t* hole, int requested_size) {
-    hole -> start_addr = hole -> start_addr + requested_size + 1;
+    hole -> start_addr = hole -> start_addr + requested_size;
     hole -> size = ((hole -> end_addr) - (hole -> start_addr));
     return;
 }
