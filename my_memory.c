@@ -32,8 +32,13 @@ int int_size = sizeof(int);
 Node_t* create_new_node(void* start_addr, void* end_addr);
 Node_t* get_allocatable_hole(int requested_size);
 void add_to_allocated_mem(Node_t* node);
+void add_to_holes_list(Node_t* node);
 int delete_from_holes_list(Node_t* node);
-void update_the_hole(Node_t* hole, int requested_size);
+void update_the_hole(Node_t* hole, int total_size);
+Node_t* search_in_allocated_mem(void* address);
+int delink_from_allocated_mem(Node_t* node);
+Node_t* hole_with_same_end_addr(void* start_addr);
+Node_t* hole_with_same_start_addr(void* end_addr);
 
 
 //Lists to maintain memory usage
@@ -66,17 +71,15 @@ void* my_malloc(int requested_size) {
                 if((requested_size + int_size) == allocatable_hole -> size){
                     add_to_allocated_mem(allocated_node);
                     delete_from_holes_list(allocatable_hole);
-
                     //store the size in the first 4 bytes.
-                    *(int*)(allocated_node->start_addr) = allocated_node->size - int_size; 
+                    *(int*)(allocated_node->start_addr) = requested_size;
                     return (allocated_node->start_addr + int_size);
                 }
                 else {
                     update_the_hole(allocatable_hole, requested_size+int_size);
                     add_to_allocated_mem(allocated_node);
-
                     //store the size in the first 4 bytes.
-                    *(int*)(allocated_node->start_addr) = allocated_node->size - int_size;
+                    *(int*)(allocated_node->start_addr) = requested_size;
                     return (allocated_node->start_addr + int_size);
                 }
             }
@@ -99,27 +102,99 @@ void* my_malloc(int requested_size) {
     return (void*)-1;
 }
 
-void my_free(void *ptr) {
-/**
- *  Fill your code here
- *
-**/
+void my_free(void* ptr) {
+    Node_t* node_to_free = NULL;
+    void* header = ptr - int_size;
+    Node_t* mergeable_hole_1 = NULL;
+    Node_t* mergeable_hole_2 = NULL;
+
+    //Get the node in allocated list with start_addr = header
+    node_to_free = search_in_allocated_mem(header);
+
+    if(node_to_free == NULL) {
+        printf("ERROR: Pointer not in allocated memory");
+    }
+    else {
+        delink_from_allocated_mem(node_to_free);
+
+        if(hole_with_same_end_addr(node_to_free->start_addr) != NULL){
+
+            mergeable_hole_1 = hole_with_same_end_addr(node_to_free->start_addr);
+            mergeable_hole_1->end_addr = node_to_free->end_addr;
+
+            if(hole_with_same_start_addr(mergeable_hole_1->end_addr) != NULL) {
+                mergeable_hole_2 = hole_with_same_start_addr(mergeable_hole_1->end_addr);
+                mergeable_hole_1->end_addr = mergeable_hole_2->end_addr;
+            }
+            free(node_to_free);
+        }
+        else if(hole_with_same_start_addr(node_to_free->end_addr) != NULL) {
+            mergeable_hole_2 = hole_with_same_start_addr(node_to_free->end_addr);
+            mergeable_hole_2->start_addr = node_to_free->start_addr;
+            free(node_to_free);
+        }
+        else {
+            add_to_holes_list(node_to_free);
+        }
+    }
+    return;
+}
+
+Node_t* hole_with_same_end_addr(void* start_addr) {
+    Node_t* curr = NULL;
+    curr = holes;
+
+    while(curr != NULL) {
+        if(start_addr == curr -> end_addr) {
+            return curr;
+        } 
+        else {
+            curr = curr -> link;
+        }
+    }
+    return NULL;
+}
+
+Node_t* hole_with_same_start_addr(void* end_addr) {
+    Node_t* curr = NULL;
+    curr = holes;
+
+    while(curr != NULL) {
+        if(end_addr == curr -> start_addr) {
+            return curr;
+        } 
+        else {
+            curr = curr -> link;
+        }
+    }
+    return NULL;
 }
 
 int num_free_bytes() {
-/**
- *  Fill your code here
- *
-**/
-    return 0;
+
+    Node_t* curr = NULL;
+    int sum = 0;
+    curr = holes;
+
+    while(curr != NULL) {
+        sum = sum + curr->size;
+        curr = curr -> link;
+    }
+
+    return sum;
 }
 
 int num_holes() {
-/**
- *  Fill your code here
- *
-**/
-    return 0;
+
+    Node_t* curr = NULL;
+    int count = 0;
+    curr = holes;
+
+    while(curr != NULL) {
+        count = count + 1;
+        curr = curr -> link;
+    }
+    return count;
 }
 
 /* Helper Functions */
@@ -169,6 +244,22 @@ void add_to_allocated_mem(Node_t* node) {
     return;
 }
 
+void add_to_holes_list(Node_t* node) {
+    Node_t* curr = NULL;
+    curr = holes;
+
+    if(curr != NULL) {
+        while(curr->link != NULL) {
+            curr = curr -> link;
+        }
+        curr -> link = node;       
+    }
+    else {
+        holes = node;
+    }
+    return;
+}
+
 int delete_from_holes_list(Node_t* node) {
     Node_t* curr = NULL;
     Node_t* prev = NULL;
@@ -197,9 +288,52 @@ int delete_from_holes_list(Node_t* node) {
     return 0;
 }
 
-void update_the_hole(Node_t* hole, int requested_size) {
-    hole -> start_addr = hole -> start_addr + requested_size;
+int delink_from_allocated_mem(Node_t* node) {
+    Node_t* curr = NULL;
+    Node_t* prev = NULL;
+
+    curr = allocated_mem;
+
+    while(curr != NULL) {
+
+        if(curr == node) {
+            if(curr == holes) {
+                holes = curr -> link;
+                curr -> link = NULL;
+                return 1;
+            }
+            else {
+                prev -> link = curr -> link;
+                curr -> link = NULL;
+                return 1;
+            }
+        }
+        else {
+            prev = curr;
+            curr = curr -> link;
+        }
+    }
+    return 0;
+}
+
+void update_the_hole(Node_t* hole, int total_size) {
+    hole -> start_addr = hole -> start_addr + total_size;
     hole -> size = ((hole -> end_addr) - (hole -> start_addr));
     return;
+}
+
+Node_t* search_in_allocated_mem(void* address) {
+    Node_t* curr = allocated_mem;
+
+    while(curr != NULL) {
+        
+        if(curr->start_addr == address) {
+            return curr;
+        }
+        else {
+            curr = curr -> link;
+        } 
+    }
+    return NULL;
 }
 
