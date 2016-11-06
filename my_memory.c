@@ -140,36 +140,6 @@ void my_free(void* ptr) {
     return;
 }
 
-Node_t* hole_with_same_end_addr(void* start_addr) {
-    Node_t* curr = NULL;
-    curr = holes;
-
-    while(curr != NULL) {
-        if(start_addr == curr -> end_addr) {
-            return curr;
-        } 
-        else {
-            curr = curr -> link;
-        }
-    }
-    return NULL;
-}
-
-Node_t* hole_with_same_start_addr(void* end_addr) {
-    Node_t* curr = NULL;
-    curr = holes;
-
-    while(curr != NULL) {
-        if(end_addr == curr -> start_addr) {
-            return curr;
-        } 
-        else {
-            curr = curr -> link;
-        }
-    }
-    return NULL;
-}
-
 int num_free_bytes() {
 
     Node_t* curr = NULL;
@@ -182,6 +152,7 @@ int num_free_bytes() {
     }
 
     return sum;
+    
 }
 
 int num_holes() {
@@ -195,6 +166,7 @@ int num_holes() {
         curr = curr -> link;
     }
     return count;
+    
 }
 
 /* Helper Functions */
@@ -333,6 +305,36 @@ Node_t* search_in_allocated_mem(void* address) {
         else {
             curr = curr -> link;
         } 
+    }
+    return NULL;
+}
+
+Node_t* hole_with_same_end_addr(void* start_addr) {
+    Node_t* curr = NULL;
+    curr = holes;
+
+    while(curr != NULL) {
+        if(start_addr == curr -> end_addr) {
+            return curr;
+        } 
+        else {
+            curr = curr -> link;
+        }
+    }
+    return NULL;
+}
+
+Node_t* hole_with_same_start_addr(void* end_addr) {
+    Node_t* curr = NULL;
+    curr = holes;
+
+    while(curr != NULL) {
+        if(end_addr == curr -> start_addr) {
+            return curr;
+        } 
+        else {
+            curr = curr -> link;
+        }
     }
     return NULL;
 }
