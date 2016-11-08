@@ -30,7 +30,10 @@ int int_size = sizeof(int);
 
 // Function Declarations
 Node_t* create_new_node(void* start_addr, void* end_addr);
-Node_t* get_allocatable_hole(int requested_size);
+void* allocate(Node_t* allocatable_hole, int requested_size);
+Node_t* get_allocatable_hole_first_fit(int requested_size);
+Node_t* get_allocatable_hole_best_fit(int requested_size);
+Node_t* get_allocatable_hole_worst_fit(int requested_size);
 void add_to_allocated_mem(Node_t* node);
 void add_to_holes_list(Node_t* node);
 int delete_from_holes_list(Node_t* node);
@@ -56,44 +59,37 @@ void setup( int _malloc_type, int _mem_size, void* _start_of_memory ) {
 }
 
 void* my_malloc(int requested_size) {
+
     Node_t* allocatable_hole = NULL;
-    Node_t* allocated_node = NULL;
+    Node_t* allocated = NULL;
 
     switch (malloc_type) {
         
         case FIRST_FIT:
-            allocatable_hole = get_allocatable_hole(requested_size + int_size);
 
-            if(allocatable_hole != NULL) {
-                allocated_node = create_new_node(allocatable_hole->start_addr, 
-                                 allocatable_hole->start_addr+requested_size+int_size);
-
-                if((requested_size + int_size) == allocatable_hole -> size){
-                    add_to_allocated_mem(allocated_node);
-                    delete_from_holes_list(allocatable_hole);
-                    //store the size in the first 4 bytes.
-                    *(int*)(allocated_node->start_addr) = requested_size;
-                    //printf("Offset: %d\n", (int)(allocated_node->start_addr + int_size - start_of_memory)/1024);
-                    return (allocated_node->start_addr + int_size);
-                }
-                else {
-                    update_the_hole(allocatable_hole, requested_size+int_size);
-                    add_to_allocated_mem(allocated_node);
-                    //store the size in the first 4 bytes.
-                    *(int*)(allocated_node->start_addr) = requested_size;
-                    //printf("Offset: %d\n", (int)(allocated_node->start_addr + int_size-start_of_memory)/1024);
-                    return (allocated_node->start_addr + int_size);
-                }
+            allocatable_hole = get_allocatable_hole_first_fit(requested_size + int_size);
+            allocated = allocate(allocatable_hole, requested_size);
+            if(allocated != NULL) {
+                return allocated;
             }
-            
             break;
 
         case BEST_FIT:
-            //code 
+
+            allocatable_hole = get_allocatable_hole_best_fit(requested_size + int_size);
+            allocated = allocate(allocatable_hole, requested_size);
+            if(allocated != NULL) {
+                return allocated;
+            }
             break;
 
         case WORST_FIT:
-            // code
+
+            allocatable_hole = get_allocatable_hole_worst_fit(requested_size + int_size);
+            allocated = allocate(allocatable_hole, requested_size);
+            if(allocated != NULL) {
+                return allocated;
+            }
             break;
 
         case BUDDY_SYSTEM:
@@ -195,7 +191,35 @@ Node_t* create_new_node(void* start_addr, void* end_addr) {
     return new_node;
 }
 
-Node_t* get_allocatable_hole(int requested_size) {
+void* allocate(Node_t* allocatable_hole, int requested_size) {
+
+    Node_t* allocated_node = NULL;
+    
+    if(allocatable_hole != NULL) {
+        allocated_node = create_new_node(allocatable_hole->start_addr, 
+                         allocatable_hole->start_addr+requested_size+int_size);
+
+        if((requested_size + int_size) == allocatable_hole -> size){
+            add_to_allocated_mem(allocated_node);
+            delete_from_holes_list(allocatable_hole);
+            //store the size in the first 4 bytes.
+            *(int*)(allocated_node->start_addr) = requested_size;
+            //printf("Offset: %d\n", (int)(allocated_node->start_addr + int_size - start_of_memory)/1024);
+            return (allocated_node->start_addr + int_size);
+        }
+        else {
+            update_the_hole(allocatable_hole, requested_size+int_size);
+            add_to_allocated_mem(allocated_node);
+            //store the size in the first 4 bytes.
+            *(int*)(allocated_node->start_addr) = requested_size;
+            //printf("Offset: %d\n", (int)(allocated_node->start_addr + int_size-start_of_memory)/1024);
+            return (allocated_node->start_addr + int_size);
+        }
+    }
+    return NULL;
+}
+
+Node_t* get_allocatable_hole_first_fit(int requested_size) {
     Node_t* curr = NULL;
     curr = holes;
 
@@ -208,6 +232,64 @@ Node_t* get_allocatable_hole(int requested_size) {
         }
     }
     return NULL;
+}
+
+Node_t* get_allocatable_hole_best_fit(int requested_size) {
+    Node_t* curr = NULL;
+    curr = holes;
+
+    int best_size_diff = 0;
+    Node_t* best_fit = NULL;
+
+    while(requested_size > (curr->size)){
+        curr = curr -> link;
+    }
+
+    best_fit = curr;
+    best_size_diff = curr->size - requested_size;
+
+    while(curr != NULL) {
+        if(requested_size > (curr->size)) {
+            curr = curr -> link;
+        } 
+        else {
+            if((curr->size - requested_size) < best_size_diff) {
+                best_fit = curr;
+                best_size_diff = (curr->size) - requested_size;                
+            }
+            curr = curr->link;
+        }
+    }
+    return best_fit;
+}
+
+Node_t* get_allocatable_hole_worst_fit(int requested_size) {
+    Node_t* curr = NULL;
+    curr = holes;
+
+    int worst_size_diff = 0;
+    Node_t* worst_fit = NULL;
+
+    while(requested_size > (curr->size)){
+        curr = curr -> link;
+    }
+
+    worst_fit = curr;
+    worst_size_diff = curr->size - requested_size;
+
+    while(curr != NULL) {
+        if(requested_size > (curr->size)) {
+            curr = curr -> link;
+        } 
+        else {
+            if((curr->size - requested_size) > worst_size_diff) {
+                worst_fit = curr;
+                worst_size_diff = (curr->size) - requested_size;                
+            }
+            curr = curr->link;
+        }
+    }
+    return worst_fit;
 }
 
 void add_to_allocated_mem(Node_t* node) {
