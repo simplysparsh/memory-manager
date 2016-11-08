@@ -73,7 +73,7 @@ void* my_malloc(int requested_size) {
                     delete_from_holes_list(allocatable_hole);
                     //store the size in the first 4 bytes.
                     *(int*)(allocated_node->start_addr) = requested_size;
-                    printf("Offset: %d\n", (int)(allocated_node->start_addr + int_size - start_of_memory)/1024);
+                    //printf("Offset: %d\n", (int)(allocated_node->start_addr + int_size - start_of_memory)/1024);
                     return (allocated_node->start_addr + int_size);
                 }
                 else {
@@ -81,7 +81,7 @@ void* my_malloc(int requested_size) {
                     add_to_allocated_mem(allocated_node);
                     //store the size in the first 4 bytes.
                     *(int*)(allocated_node->start_addr) = requested_size;
-                    printf("Offset: %d\n", (int)(allocated_node->start_addr + int_size-start_of_memory)/1024);
+                    //printf("Offset: %d\n", (int)(allocated_node->start_addr + int_size-start_of_memory)/1024);
                     return (allocated_node->start_addr + int_size);
                 }
             }
@@ -123,19 +123,29 @@ void my_free(void* ptr) {
         mergeable_hole_2 = hole_with_same_start_addr(node_to_free->end_addr);
 
         if(mergeable_hole_1 != NULL && mergeable_hole_2 != NULL) {
+            printf("HERE \n" );
             mergeable_hole_1 -> end_addr = mergeable_hole_2 -> end_addr;
+            mergeable_hole_1 -> size = (mergeable_hole_1->end_addr - mergeable_hole_1->start_addr);
             delete_from_holes_list(mergeable_hole_2);
         }
         else if(mergeable_hole_1 != NULL) {
+            printf("HERE A \n" );
             mergeable_hole_1 -> end_addr = node_to_free -> end_addr;
+            mergeable_hole_1 -> size = (mergeable_hole_1->end_addr - mergeable_hole_1->start_addr);
             free(node_to_free);
         }
         else if(mergeable_hole_2 != NULL) {
+            printf("HERE B \n" );
             mergeable_hole_2 -> start_addr = node_to_free -> start_addr;
+            mergeable_hole_2 -> size = (mergeable_hole_2->end_addr - mergeable_hole_2->start_addr);
             free(node_to_free);
         }
-        else {
+        else if(mergeable_hole_1 == NULL && mergeable_hole_2 == NULL) {
+            printf("HERE C \n" );
             add_to_holes_list(node_to_free);
+        }
+        else {
+            printf("CANNOT FREE THE MEMORY");
         }
     }
     return;
