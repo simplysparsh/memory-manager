@@ -123,25 +123,25 @@ void my_free(void* ptr) {
         mergeable_hole_2 = hole_with_same_start_addr(node_to_free->end_addr);
 
         if(mergeable_hole_1 != NULL && mergeable_hole_2 != NULL) {
-            printf("HERE \n" );
+           
             mergeable_hole_1 -> end_addr = mergeable_hole_2 -> end_addr;
             mergeable_hole_1 -> size = (mergeable_hole_1->end_addr - mergeable_hole_1->start_addr);
             delete_from_holes_list(mergeable_hole_2);
         }
         else if(mergeable_hole_1 != NULL) {
-            printf("HERE A \n" );
+            
             mergeable_hole_1 -> end_addr = node_to_free -> end_addr;
             mergeable_hole_1 -> size = (mergeable_hole_1->end_addr - mergeable_hole_1->start_addr);
             free(node_to_free);
         }
         else if(mergeable_hole_2 != NULL) {
-            printf("HERE B \n" );
+           
             mergeable_hole_2 -> start_addr = node_to_free -> start_addr;
             mergeable_hole_2 -> size = (mergeable_hole_2->end_addr - mergeable_hole_2->start_addr);
             free(node_to_free);
         }
         else if(mergeable_hole_1 == NULL && mergeable_hole_2 == NULL) {
-            printf("HERE C \n" );
+            
             add_to_holes_list(node_to_free);
         }
         else {
