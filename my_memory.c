@@ -73,6 +73,7 @@ void* my_malloc(int requested_size) {
                     delete_from_holes_list(allocatable_hole);
                     //store the size in the first 4 bytes.
                     *(int*)(allocated_node->start_addr) = requested_size;
+                    printf("Offset: %d\n", (int)(allocated_node->start_addr + int_size - start_of_memory)/1024);
                     return (allocated_node->start_addr + int_size);
                 }
                 else {
@@ -80,6 +81,7 @@ void* my_malloc(int requested_size) {
                     add_to_allocated_mem(allocated_node);
                     //store the size in the first 4 bytes.
                     *(int*)(allocated_node->start_addr) = requested_size;
+                    printf("Offset: %d\n", (int)(allocated_node->start_addr + int_size-start_of_memory)/1024);
                     return (allocated_node->start_addr + int_size);
                 }
             }
@@ -117,20 +119,19 @@ void my_free(void* ptr) {
     else {
         delink_from_allocated_mem(node_to_free);
 
-        if(hole_with_same_end_addr(node_to_free->start_addr) != NULL){
+        mergeable_hole_1 = hole_with_same_end_addr(node_to_free->start_addr);
+        mergeable_hole_2 = hole_with_same_start_addr(node_to_free->end_addr);
 
-            mergeable_hole_1 = hole_with_same_end_addr(node_to_free->start_addr);
-            mergeable_hole_1->end_addr = node_to_free->end_addr;
-
-            if(hole_with_same_start_addr(mergeable_hole_1->end_addr) != NULL) {
-                mergeable_hole_2 = hole_with_same_start_addr(mergeable_hole_1->end_addr);
-                mergeable_hole_1->end_addr = mergeable_hole_2->end_addr;
-            }
+        if(mergeable_hole_1 != NULL && mergeable_hole_2 != NULL) {
+            mergeable_hole_1 -> end_addr = mergeable_hole_2 -> end_addr;
+            delete_from_holes_list(mergeable_hole_2);
+        }
+        else if(mergeable_hole_1 != NULL) {
+            mergeable_hole_1 -> end_addr = node_to_free -> end_addr;
             free(node_to_free);
         }
-        else if(hole_with_same_start_addr(node_to_free->end_addr) != NULL) {
-            mergeable_hole_2 = hole_with_same_start_addr(node_to_free->end_addr);
-            mergeable_hole_2->start_addr = node_to_free->start_addr;
+        else if(mergeable_hole_2 != NULL) {
+            mergeable_hole_2 -> start_addr = node_to_free -> start_addr;
             free(node_to_free);
         }
         else {
@@ -152,7 +153,6 @@ int num_free_bytes() {
     }
 
     return sum;
-    
 }
 
 int num_holes() {
@@ -201,14 +201,25 @@ Node_t* get_allocatable_hole(int requested_size) {
 }
 
 void add_to_allocated_mem(Node_t* node) {
+
     Node_t* curr = NULL;
+    Node_t* prev = NULL;
     curr = allocated_mem;
 
     if(curr != NULL) {
-        while(curr->link != NULL) {
-            curr = curr -> link;
+
+        if(node->start_addr < allocated_mem->start_addr) {
+            node -> link = allocated_mem;
+            allocated_mem = node;
         }
-        curr -> link = node;       
+        else {
+            while(curr != NULL && (curr->start_addr < node->start_addr)) {
+                prev = curr;
+                curr = curr -> link;
+            }
+            node -> link = curr;
+            prev -> link = node;
+        }
     }
     else {
         allocated_mem = node;
@@ -218,16 +229,23 @@ void add_to_allocated_mem(Node_t* node) {
 
 void add_to_holes_list(Node_t* node) {
     Node_t* curr = NULL;
+    Node_t* prev = NULL;
     curr = holes;
 
     if(curr != NULL) {
-        while(curr->link != NULL) {
-            curr = curr -> link;
+
+        if(node->start_addr < holes->start_addr) {
+            node -> link = holes;
+            holes = node;
         }
-        curr -> link = node;       
-    }
-    else {
-        holes = node;
+        else {
+            while(curr->start_addr < node->start_addr) {
+                prev = curr;
+                curr = curr -> link;
+            }
+            node -> link = curr;
+            prev -> link = node;
+        }
     }
     return;
 }
