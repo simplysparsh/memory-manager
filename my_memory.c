@@ -21,6 +21,17 @@ struct Node {
     Node_t* link;
 };
 
+typedef struct Buddy_Node Buddy_Node_t; 
+struct Buddy_Node {
+    void* start_addr;
+    void* end_addr;
+    int size;
+    int status;
+    Buddy_Node_t* left_link;
+    Buddy_Node_t* right_link;
+    Buddy_Node_t* prev_link;
+};
+
 // Global Variables
 int malloc_type = -1;
 int mem_size = 0;
@@ -42,11 +53,14 @@ Node_t* search_in_allocated_mem(void* address);
 int delink_from_allocated_mem(Node_t* node);
 Node_t* hole_with_same_end_addr(void* start_addr);
 Node_t* hole_with_same_start_addr(void* end_addr);
+void divide_tree_node(Buddy_Node_t* curr);
+Buddy_Node_t* new_tree_node(Buddy_Node_t* start_addr, Buddy_Node_t* end_addr, Buddy_Node_t* prev_link);
 
 
 //Lists to maintain memory usage
 Node_t* holes = NULL;
 Node_t* allocated_mem = NULL;
+Buddy_Node_t* root = NULL;
 
 void setup( int _malloc_type, int _mem_size, void* _start_of_memory ) {
 
@@ -55,13 +69,21 @@ void setup( int _malloc_type, int _mem_size, void* _start_of_memory ) {
     start_of_memory = _start_of_memory; 
     end_of_memory = _start_of_memory + mem_size;
 
-    holes = create_new_node(start_of_memory, end_of_memory);
+    if (_malloc_type == BUDDY_SYSTEM) {
+        root = new_tree_node(start_of_memory, end_of_memory, NULL);
+    }
+    else {
+        holes = create_new_node(start_of_memory, end_of_memory);
+    }
+
+    
 }
 
 void* my_malloc(int requested_size) {
 
     Node_t* allocatable_hole = NULL;
     Node_t* allocated = NULL;
+    Buddy_Node_t* curr = NULL;
 
     switch (malloc_type) {
         
@@ -93,7 +115,31 @@ void* my_malloc(int requested_size) {
             break;
 
         case BUDDY_SYSTEM:
-            // code
+            curr = root;
+            if (curr != NULL) {
+                while(curr->size >= 2*(requested_size+int_size) && curr->status == 0) {
+                    divide_tree_node(curr);
+                    curr = curr -> left_link;
+                }
+
+                if(curr->size >= (requested_size + int_size) && curr->status == 0) {
+                    curr->status = 1;
+                    *(int*)(curr->start_addr) = requested_size;
+                    return(curr->start_addr + int_size);
+                }
+                else {
+                    curr = curr -> prev_link;
+                    curr = curr->right_link;
+                    curr->status = 1;
+                    *(int*)(curr->start_addr) = requested_size;
+
+                    curr = curr->prev_link;
+                    curr -> status = 1;
+                    return(curr->start_addr + int_size);                   
+                }
+
+            }
+            
             break;
     }
 
@@ -176,6 +222,29 @@ int num_holes() {
 }
 
 /* Helper Functions */
+
+void divide_tree_node(Buddy_Node_t* curr) {
+    Buddy_Node_t* left_node = NULL;
+    Buddy_Node_t* right_node = NULL;
+
+    left_node = new_tree_node(curr->start_addr, (curr->start_addr + (curr->size)/2), curr);
+    right_node = new_tree_node((curr->start_addr + (curr->size)/2), curr->end_addr, curr);
+
+    curr->left_link = left_node;
+    curr->right_link = right_node;
+}
+
+Buddy_Node_t* new_tree_node(Buddy_Node_t* start_addr, Buddy_Node_t* end_addr, Buddy_Node_t* prev_link) {
+    Buddy_Node_t* new_tree_node = NULL;
+    new_tree_node->start_addr = start_addr;
+    new_tree_node->end_addr = end_addr;
+    new_tree_node->prev_link = prev_link;
+    new_tree_node->size = end_addr - start_addr;
+    new_tree_node->left_link = NULL;
+    new_tree_node->right_link = NULL;
+    new_tree_node->status = 0;
+    return new_tree_node;
+}
 
 Node_t* create_new_node(void* start_addr, void* end_addr) {
     Node_t* new_node = NULL;
